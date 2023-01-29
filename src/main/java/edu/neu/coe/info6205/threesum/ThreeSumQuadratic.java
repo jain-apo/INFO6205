@@ -37,8 +37,17 @@ public class ThreeSumQuadratic implements ThreeSum {
      */
     public List<Triple> getTriples(int j) {
         List<Triple> triples = new ArrayList<>();
-        // FIXME : for each candidate, test if a[i] + a[j] + a[k] = 0.
-        // END 
+        int i = 0;
+        int k = length - 1;
+        while (i < j && j < k) {
+            int sum = a[i] + a[j] + a[k];
+            if (sum == 0) {
+                triples.add(new Triple(i, j, k));
+                i++;
+                k--;
+            } else if (sum < 0) i++;
+            else k--;
+        }
         return triples;
     }
 
