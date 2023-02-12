@@ -8,6 +8,7 @@
 package edu.neu.coe.info6205.union_find;
 
 import java.util.Arrays;
+import java.util.Random;
 
 /**
  * Height-weighted Quick Union with Path Compression
@@ -83,6 +84,12 @@ public class UF_HWQUPC implements UF {
         int root = p;
         // FIXME
         // END 
+        while (root != getParent(root)) {
+            root = getParent(root);
+        }
+        if (pathCompression) {
+            doPathCompression(p);
+        }
         return root;
     }
 
@@ -170,7 +177,17 @@ public class UF_HWQUPC implements UF {
 
     private void mergeComponents(int i, int j) {
         // FIXME make shorter root point to taller one
-        // END 
+        // END
+         int I = find(i);
+        int J = find(j);
+        if (I == J) return;
+        if (height[I] < height[J]) {
+            updateParent(I, J);
+            updateHeight(J, I);
+        } else {
+            updateParent(J, I);
+            updateHeight(I, J);
+        }
     }
 
     /**
@@ -178,6 +195,36 @@ public class UF_HWQUPC implements UF {
      */
     private void doPathCompression(int i) {
         // FIXME update parent to value of grandparent
-        // END 
+        // END
+          if (i != getParent(i)) {
+            updateParent(i, getParent(getParent(i)));
+            doPathCompression(getParent(i));
+        }
+
     }
+     public static void main(String[] args) {
+         int num = 10;
+         int count = 15;
+         int num_trials = 10;
+         Random r = new Random(69420);
+
+         for (int i = 0; i < count; i++, num *= 2) {
+             int tp = 0;
+             for (int j = 0; j < num_trials; j++) {
+                 int np = 0;
+                 UF_HWQUPC u = new UF_HWQUPC(num);
+                 while (u.components() > 1) {
+                     int x = r.nextInt(num);
+                     int y = r.nextInt(num);
+                     if (!u.connected(x, y)) {
+                         u.union(x, y);
+                     }
+                     np++;
+                 }
+                 tp = tp + np;
+             }
+             int avg = tp / num_trials;
+             System.out.println("for n = " + num + ", average no. of random pairs needed for singularity = " + avg + "");
+         }
+     }
 }
