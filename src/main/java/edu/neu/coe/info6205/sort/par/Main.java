@@ -4,6 +4,7 @@ import java.io.BufferedWriter;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -16,46 +17,40 @@ import java.util.concurrent.ForkJoinPool;
  */
 public class Main {
 
+    private static DecimalFormat decimalFormat=new DecimalFormat("0.00");
+
     public static void main(String[] args) {
-        processArgs(args);
-        System.out.println("Degree of parallelism: " + ForkJoinPool.getCommonPoolParallelism());
-        Random random = new Random();
-        int[] array = new int[2000000];
-        ArrayList<Long> timeList = new ArrayList<>();
-        for (int j = 50; j < 100; j++) {
-            ParSort.cutoff = 10000 * (j + 1);
-            // for (int i = 0; i < array.length; i++) array[i] = random.nextInt(10000000);
-            long time;
-            long startTime = System.currentTimeMillis();
-            for (int t = 0; t < 10; t++) {
-                for (int i = 0; i < array.length; i++) array[i] = random.nextInt(10000000);
-                ParSort.sort(array, 0, array.length);
+//        processArgs(args);
+//        System.out.println("Degree of parallelism: " + ForkJoinPool.getCommonPoolParallelism());
+        System.out.println("Machine has " + Runtime.getRuntime().availableProcessors() + " available processors.");
+        for(int threads = 1; threads <= Runtime.getRuntime().availableProcessors(); threads++) {
+            for(int runs = 1, arrSize = 500_000; runs <= 3; runs++, arrSize *= 2) {
+                benchmark(arrSize, threads);
             }
-            long endTime = System.currentTimeMillis();
-            time = (endTime - startTime);
-            timeList.add(time);
-
-
-            System.out.println("cutoff：" + (ParSort.cutoff) + "\t\t10times Time:" + time + "ms");
-
-        }
-        try {
-            FileOutputStream fis = new FileOutputStream("./src/result.csv");
-            OutputStreamWriter isr = new OutputStreamWriter(fis);
-            BufferedWriter bw = new BufferedWriter(isr);
-            int j = 0;
-            for (long i : timeList) {
-                String content = (double) 10000 * (j + 1) / 2000000 + "," + (double) i / 10 + "\n";
-                j++;
-                bw.write(content);
-                bw.flush();
-            }
-            bw.close();
-
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
+
+      private static void benchmark(int arrSize, int count) {
+          System.out.println("Array size: " + arrSize + "\t\tThreads: " + count);
+          Random random = new Random();
+          int[] arr = new int[arrSize];
+          ArrayList<Long> list = new ArrayList<>();
+          for (double cutoffRatio = 0.05; cutoffRatio < 1; cutoffRatio += 0.1) {
+              ParSort.cutoff = (int) (arrSize * cutoffRatio);
+              ParSort.forkJoinPool = new ForkJoinPool(count);
+              long ti;
+              long st = System.currentTimeMillis();
+              for (int t = 0; t < 10; t++) {
+                  for (int i = 0; i < arr.length; i++) arr[i] = random.nextInt(10000000);
+                  ParSort.sort(arr, 0, arr.length);
+              }
+              long et = System.currentTimeMillis();
+              ti = (et - st);
+              list.add(ti);
+
+              System.out.println("cutoff-ratio：" + (decimalFormat.format(cutoffRatio)) + "\t\t10times Time:" + ti + "ms");
+          }
+      }
 
     private static void processArgs(String[] args) {
         String[] xs = args;
