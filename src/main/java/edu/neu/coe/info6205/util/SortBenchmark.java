@@ -55,7 +55,7 @@ public class SortBenchmark {
     }
 
       private void sortIntegersBySorter(final int array_size, SortWithHelper<Integer> sorter) {
-        final Random random = new Random(array_size); // make sure for the given array size, the same random numbers are generated
+        final Random random = new Random(array_size+50); // make sure for the given array size, the same random numbers are generated
         Integer[] numbers = new Integer[array_size];
         for (int i = 0; i < array_size; i++) numbers[i] = random.nextInt();
         runIntegerSortBenchmark(numbers, array_size, 10, sorter, sorter::preProcess, timeLoggersLinearithmic);
