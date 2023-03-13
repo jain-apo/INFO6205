@@ -6,7 +6,9 @@ import edu.neu.coe.info6205.sort.SortException;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
@@ -79,8 +81,15 @@ public class SortBenchmarkHelper {
 
     // TEST
     private static String getFile(String resource, @SuppressWarnings("SameParameterValue") Class<?> clazz) throws FileNotFoundException {
-        final URL url = clazz.getClassLoader().getResource(resource);
+      final URL url = clazz.getClassLoader().getResource(resource);
         if (url != null) return url.getFile();
+        if (url != null) {
+            try {
+                return Paths.get(url.toURI()).toString();
+            } catch (URISyntaxException e) {
+                throw new RuntimeException(e);
+            }
+        }
         throw new FileNotFoundException(resource + " in " + clazz);
     }
 

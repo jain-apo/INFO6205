@@ -5,14 +5,12 @@ package edu.neu.coe.info6205.util;
 
 import edu.neu.coe.info6205.sort.BaseHelper;
 import edu.neu.coe.info6205.sort.Helper;
+import edu.neu.coe.info6205.sort.HelperFactory;
 import edu.neu.coe.info6205.sort.SortWithHelper;
-import edu.neu.coe.info6205.sort.elementary.BubbleSort;
-import edu.neu.coe.info6205.sort.elementary.InsertionSort;
-import edu.neu.coe.info6205.sort.elementary.RandomSort;
-import edu.neu.coe.info6205.sort.elementary.ShellSort;
+import edu.neu.coe.info6205.sort.elementary.*;
 import edu.neu.coe.info6205.sort.linearithmic.TimSort;
 import edu.neu.coe.info6205.sort.linearithmic.*;
-
+import java.util.stream.IntStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -36,13 +34,41 @@ public class SortBenchmark {
     }
 
     public static void main(String[] args) throws IOException {
-        Config config = Config.load(SortBenchmark.class);
+  Config config = Config.load(SortBenchmark.class);
         logger.info("SortBenchmark.main: " + config.get("SortBenchmark", "version") + " with word counts: " + Arrays.toString(args));
         if (args.length == 0) logger.warn("No word counts specified on the command line");
+
+        int minimum = 10000;
+        int maximum = 256000;
+        String strategy = config.get("sortbenchmark", "strategy");
+
+        logger.info("SortBenchmark.main: " + config.get("sortbenchmark", "version") + " with min: " + minimum + " max: " + maximum + " strategy: " + strategy);
         SortBenchmark benchmark = new SortBenchmark(config);
         benchmark.sortIntegersByShellSort(config.getInt("shellsort", "n", 100000));
         benchmark.sortStrings(Arrays.stream(args).map(Integer::parseInt));
         benchmark.sortLocalDateTimes(config.getInt("benchmarkdatesorters", "n", 100000), config);
+
+        IntStream.iterate(minimum, i -> i < maximum, i -> i * 2).forEach(array_size -> {
+            List<SortWithHelper<Integer>> sorters = getSorters(array_size, config);
+            sorters.forEach(sorter -> benchmark.sortIntegersBySorter(array_size, sorter));
+        });
+    }
+
+      private void sortIntegersBySorter(final int array_size, SortWithHelper<Integer> sorter) {
+        final Random random = new Random(array_size); // make sure for the given array size, the same random numbers are generated
+        Integer[] numbers = new Integer[array_size];
+        for (int i = 0; i < array_size; i++) numbers[i] = random.nextInt();
+        runIntegerSortBenchmark(numbers, array_size, 10, sorter, sorter::preProcess, timeLoggersLinearithmic);
+    }
+
+    private static ArrayList<SortWithHelper<Integer>> getSorters(final int array_size, Config config){
+        var result = new ArrayList<SortWithHelper<Integer>>();
+
+        result.add(new MergeSortBasic<Integer>(HelperFactory.create("MergeSortBasic", array_size, config)));
+        result.add(new HeapSort<Integer>(HelperFactory.create("HeapSort", array_size, config)));
+        result.add(new QuickSort_DualPivot<Integer>(HelperFactory.create("QuickSort_DualPivot", array_size, config)));
+
+        return result;
     }
 
     public void sortLocalDateTimes(final int n, Config config) throws IOException {
@@ -232,6 +258,7 @@ public class SortBenchmark {
 
     private void doLeipzigBenchmarkEnglish(int x) {
         String resource = "eng-uk_web_2002_" + (x < 50000 ? "10K" : x < 200000 ? "100K" : "1M") + "-sentences.txt";
+        logger.info("Resource selected: " + resource);
         try {
             doLeipzigBenchmark(resource, x, Utilities.round(100000000 / minComparisons(x)));
         } catch (FileNotFoundException e) {
@@ -251,6 +278,7 @@ public class SortBenchmark {
      */
     static void runStringSortBenchmark(String[] words, int nWords, int nRuns, SortWithHelper<String> sorter, UnaryOperator<String[]> preProcessor, TimeLogger[] timeLoggers) {
         new SorterBenchmark<>(String.class, preProcessor, sorter, words, nRuns, timeLoggers).run(nWords);
+        logger.info(sorter.getHelper().showStats());
         sorter.close();
     }
 
@@ -281,6 +309,7 @@ public class SortBenchmark {
      */
     static void runIntegerSortBenchmark(Integer[] numbers, int n, int nRuns, SortWithHelper<Integer> sorter, UnaryOperator<Integer[]> preProcessor, TimeLogger[] timeLoggers) {
         new SorterBenchmark<>(Integer.class, preProcessor, sorter, numbers, nRuns, timeLoggers).run(n);
+        logger.info(sorter.getHelper().showStats());
         sorter.close();
     }
 
@@ -363,6 +392,9 @@ public class SortBenchmark {
         benchmarkStringSorters(getWords(resource, SortBenchmark::getLeipzigWords), nWords, nRuns);
         if (isConfigBoolean(Config.HELPER, BaseHelper.INSTRUMENT))
             benchmarkStringSortersInstrumented(getWords(resource, SortBenchmark::getLeipzigWords), nWords, nRuns);
+        else
+            benchmarkStringSorters(getWords(resource, SortBenchmark::getLeipzigWords), nWords, nRuns);
+
     }
 
     @SuppressWarnings("SameParameterValue")
